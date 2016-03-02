@@ -9,9 +9,10 @@ setup(
         'requests',
         'beautifulsoup4'
     ],
+    py_modules=['pyanime'],
     entrypoints={
         'console_scripts': [
-            'sCan=client:main'
+            'pyanime=pyanime:main'
         ]
     }
 )

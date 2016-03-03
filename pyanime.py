@@ -3,7 +3,7 @@ import os, re
 import requests, threading
 import bs4
 
-from clint.textui import prompt, puts, validators
+from clint.textui import prompt, puts, validators, columns
 
 BASE_URL = 'http://www.shanaproject.com'
 OUTPATH = os.path.join(os.getenv('HOME'), 'PyAnime/')
@@ -13,6 +13,7 @@ size_dict = {
     'GiB': 2,
     'GB': 2
 }
+MAX_THREADS = 5
 
 
 class RangeValidator:
@@ -36,6 +37,7 @@ def main():
     command = prompt.options('Select a command', options=commands)
     while command != 'q':
         command()
+        puts()
         command = prompt.options('Select a command', options=commands)
     pass
 
@@ -58,6 +60,11 @@ def request_data(url, params=None):
     return req
 
 
+def download_ep(download_path):
+    data = request_data(BASE_URL+download_path)
+    # Implement download code
+
+
 def parse_range(list):
     for range, size, links in list:
         if range.isdigit():
@@ -73,12 +80,29 @@ def parse_range(list):
                 yield None
 
 
+def compare_file_sizes(new, master):
+    reg_new = re.fullmatch(r'([\d\.]+)(\w+)', new)
+    reg_master = re.fullmatch(r'([\d\.]+)(\w+)', master)
+    if reg_new and reg_master:
+        if size_dict[reg_new.group(2)] < size_dict[reg_master.group(2)]\
+                or float(reg_new.group(1)) < float(reg_master.group(1)):
+            return True
+        return False
+    else:
+        raise SystemExit('Invalid file sizes:', new, master)
+
+
 def filter_queue(queue, low=True):
     values_dict = dict()
-    # for i, item in enumerate(queue):
-    #     if item[0] not in values_dict:
-    #         values_dict[item[0]] = i
-    #     elif item[1]
+    print(queue)
+    for i, item in enumerate(queue):
+        if item[0] == '\xa0':
+            continue
+        if item[0] not in values_dict\
+                or compare_file_sizes(item[1], values_dict[item[0]][1]):
+            values_dict[item[0]] = (i, item[1],)
+    return [queue[int(index)] for index in [i[0] for i in values_dict.values()]]
+
 
 
 def bulk_download():
@@ -127,9 +151,25 @@ def bulk_download():
                     continue
         else:
             raise SystemExit('Invalid range')
-        print(download_queue)
-        input()
-        filter_queue(download_queue)
+        download_queue = filter_queue(download_queue)
+        if download_queue:
+            puts(columns(['Episode', 10], ['Size', 10]))
+            for episode in download_queue:
+                puts(columns([episode[0], 10], [episode[1], 10]))
+        else:
+            puts('No entries to download')
+            return
+        input('Proceed with download? (Ctrl-C to exit)')
+        current_downloads = []
+        for item in download_queue:
+            t = threading.Thread(target=request_data, args=BASE_URL+'item')
+            if current_downloads >= MAX_THREADS:
+                current_downloads[0].join()
+            t.start()
+        for thread in current_downloads:
+            thread.join()
+        puts('Download completed')
+
 
 
 commands = [
@@ -139,7 +179,7 @@ commands = [
 ]
 
 if __name__ == '__main__':
-    if not os.path.exists(OUTPATH):
+    if not os.path.isdir(OUTPATH):
         os.mkdir(OUTPATH)
     try:
         main()

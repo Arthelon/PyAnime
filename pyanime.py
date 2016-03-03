@@ -6,7 +6,9 @@ import bs4
 from clint.textui import prompt, puts, validators
 
 BASE_URL = 'http://www.shanaproject.com'
+OUTPATH = os.path.join(os.getenv('HOME'), 'PyAnime/')
 size_dict = {
+    'KB': 0,
     'MB': 1,
     'GiB': 2,
     'GB': 2
@@ -34,9 +36,13 @@ def main():
     command = prompt.options('Select a command', options=commands)
     while command != 'q':
         command()
-        clear()
         command = prompt.options('Select a command', options=commands)
     pass
+
+
+def change_download_location():
+    to_path = prompt.query('Enter output path (~/PyAnime by default)', validators=[validators.PathValidator()])
+    print('Path change to \'{:s}\''.format(to_path))
 
 
 def clear():
@@ -68,7 +74,11 @@ def parse_range(list):
 
 
 def filter_queue(queue, low=True):
-    pass
+    values_dict = dict()
+    # for i, item in enumerate(queue):
+    #     if item[0] not in values_dict:
+    #         values_dict[item[0]] = i
+    #     elif item[1]
 
 
 def bulk_download():
@@ -124,10 +134,13 @@ def bulk_download():
 
 commands = [
     {'selector': '1', 'prompt': 'Bulk download an anime series', 'return': bulk_download},
-    {'selector': '2', 'prompt': 'Quit', 'return': 'q'}
+    {'selector': '2', 'prompt': 'Change download location', 'return': change_download_location},
+    {'selector': '3', 'prompt': 'Quit', 'return': 'q'}
 ]
 
 if __name__ == '__main__':
+    if not os.path.exists(OUTPATH):
+        os.mkdir(OUTPATH)
     try:
         main()
     except KeyboardInterrupt:
